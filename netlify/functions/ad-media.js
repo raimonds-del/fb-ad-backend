@@ -2,28 +2,32 @@
 
 exports.handler = async (event) => {
   try {
-    const adId = event.queryStringParameters?.ad_id;
-    if (!adId) {
+    const snapshotUrl = event.queryStringParameters?.snapshot;
+
+    if (!snapshotUrl) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "ad_id required" }),
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({ error: "snapshot param required" }),
       };
     }
 
-    // ✅ No access_token, public snapshot
-    const snapshotUrl =
-      `https://www.facebook.com/ads/archive/render_ad/?id=${adId}`;
+    // Decode in case it's URL-encoded
+    const url = decodeURIComponent(snapshotUrl);
 
-    const fbRes = await fetch(snapshotUrl, {
+    const fbRes = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0", // pretend to be a normal browser
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
 
     const html = await fbRes.text();
 
     if (!fbRes.ok) {
-      // return FB body as well for debugging
       return {
         statusCode: 502,
         headers: {
@@ -32,7 +36,7 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({
           error: `FB error ${fbRes.status}`,
-          details: html.slice(0, 500), // first 500 chars for debug
+          details: html.slice(0, 500),
         }),
       };
     }
